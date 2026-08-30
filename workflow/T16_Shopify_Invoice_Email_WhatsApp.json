@@ -1,0 +1,483 @@
+{
+  "name": "T16_Shopify_Invoice_Email_WhatsApp",
+  "nodes": [
+    {
+      "id": "8d5dfff8-2803-43bd-93f8-2aad7ea6f1d6",
+      "name": "Note_cbd86756",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        50,
+        50
+      ],
+      "parameters": {
+        "content": "Created by Oyekola Ololade\nhttps://www.linkedin.com/in/ololade-oyekola-5b1797397/\nn8n Template Library - Gumroad",
+        "width": 300,
+        "height": 100,
+        "color": 4
+      }
+    },
+    {
+      "id": "03ea188a-e986-45a6-a3b1-18a753ae6bba",
+      "name": "Shopify Order Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "webhookId": "f4c8af87-defa-4607-99ad-3225a904cc89",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "shopify-order",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "050c59b7-c549-4181-8178-328a7fb0a149",
+      "name": "Extract Order",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        450,
+        300
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "17d55623-aab9-4de2-97f6-7d663586bcd4",
+              "name": "order_id",
+              "value": "={{ $json.body.id }}",
+              "type": "string"
+            },
+            {
+              "id": "306ea534-9e16-455e-9cd3-06b3e237fbb7",
+              "name": "customer_name",
+              "value": "={{ $json.body.customer.first_name + ' ' + $json.body.customer.last_name }}",
+              "type": "string"
+            },
+            {
+              "id": "03c99c4a-85d3-4360-8d80-f929fda0c747",
+              "name": "email",
+              "value": "={{ $json.body.email }}",
+              "type": "string"
+            },
+            {
+              "id": "c5ce6436-8321-4a2b-a011-70dc129e75d0",
+              "name": "phone",
+              "value": "={{ $json.body.customer.phone }}",
+              "type": "string"
+            },
+            {
+              "id": "f1ca3183-d763-4508-941f-420a212c5f39",
+              "name": "total",
+              "value": "={{ $json.body.total_price }}",
+              "type": "string"
+            },
+            {
+              "id": "b4054423-1af9-4ffc-997f-7f3196e9f6ed",
+              "name": "items",
+              "value": "={{ JSON.stringify($json.body.line_items) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "60b077c1-8934-41c3-bd59-d905b1efd074",
+      "name": "Generate Invoice PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        650,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "YOUR_PDF_SERVICE_URL",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_PDF_API_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "template",
+              "value": "invoice"
+            },
+            {
+              "name": "order_id",
+              "value": "={{ $json.order_id }}"
+            },
+            {
+              "name": "customer",
+              "value": "={{ $json.customer_name }}"
+            },
+            {
+              "name": "total",
+              "value": "={{ $json.total }}"
+            },
+            {
+              "name": "items",
+              "value": "={{ $json.items }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "3625133f-9f3c-44c3-8ad6-a86101aa2670",
+      "name": "PDF Generated?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        850,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cd7b12d0-ca92-4f5f-9e13-59b35f51d094",
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 200,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "fe58ead4-a4c0-4735-b21b-8e10dc215133",
+      "name": "Send Invoice Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1050,
+        200
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.sendgrid.com/v3/mail/send",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_SENDGRID_KEY"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "personalizations",
+              "value": "[{\"to\": [{\"email\": \"{{ $json.email }}\"}]}]"
+            },
+            {
+              "name": "from_email",
+              "value": "{\"email\": \"orders@yourstore.com\"}"
+            },
+            {
+              "name": "subject",
+              "value": "=\"Invoice #\" + $json.order_id"
+            },
+            {
+              "name": "content",
+              "value": "[{\"type\": \"text/html\", \"value\": \"<p>Your invoice is attached.</p>\"}]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "b0a340b4-4fd6-4a59-915c-543683d3eb06",
+      "name": "Send WhatsApp Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1050,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "YOUR_WHATSAPP_API_URL",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": false,
+        "headerParameters": {
+          "parameters": []
+        },
+        "options": {},
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "message",
+              "value": "=\"Order confirmed! Total: \" + $json.total + \". Tracking: [link]\""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "6b64c816-3d45-44d9-a94f-ae92258024ce",
+      "name": "Add to Airtable",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1050,
+        400
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.airtable.com/v0/YOUR_BASE_ID/Orders",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_AIRTABLE_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "fields",
+              "value": "{\"Order_ID\": \"{{ $json.order_id }}\", \"Customer\": \"{{ $json.customer_name }}\", \"Email\": \"{{ $json.email }}\", \"Total\": \"{{ $json.total }}\", \"Status\": \"Pending Fulfillment\", \"Date\": \"{{ $now.toISO() }}\"}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "df082eca-4ad4-4f03-b86f-08ed45af935e",
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1050,
+        550
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5b6bfd6a-4f5c-4f2a-9451-73e990abc5dd",
+              "name": "error",
+              "value": "Invoice generation failed",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "3fd15424-d43b-4821-a6a0-58f52f4ae135",
+      "name": "Notify Admin",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1250,
+        550
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "YOUR_SLACK_WEBHOOK_URL",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": false,
+        "headerParameters": {
+          "parameters": []
+        },
+        "options": {},
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "=\"Invoice failed for order: \" + $json.order_id"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "464b22be-0bd6-46df-9b60-565d8654c00e",
+      "name": "End",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1450,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Shopify Order Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Order",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Order": {
+      "main": [
+        [
+          {
+            "node": "Generate Invoice PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Invoice PDF": {
+      "main": [
+        [
+          {
+            "node": "PDF Generated?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Generated?": {
+      "main": [
+        [
+          {
+            "node": "Send Invoice Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Invoice Email": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send WhatsApp Notification": {
+      "main": [
+        [
+          {
+            "node": "Add to Airtable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add to Airtable": {
+      "main": [
+        [
+          {
+            "node": "End",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Handler": {
+      "main": [
+        [
+          {
+            "node": "Notify Admin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Admin": {
+      "main": [
+        [
+          {
+            "node": "End",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    "Gumroad",
+    "Production",
+    "Template",
+    "Oyekola Ololade"
+  ],
+  "pinData": {},
+  "staticData": null
+}
