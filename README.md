@@ -35,8 +35,18 @@ Generates an order invoice and notifies the customer by email and WhatsApp the m
 
 ## Architecture
 
-Open the [visual project page](./index.html#architecture) for the flow derived from the sanitized export.
+The diagram below represents the sanitized template flow. External services, credentials, and environment-specific identifiers must be configured before execution.
 
+```mermaid
+flowchart TD
+    A["Shopify order webhook"] --> B["Normalize order and line items"]
+    B --> C["Request invoice PDF"]
+    C --> D{"PDF generated?"}
+    D -->|Yes| E["Email invoice"]
+    D -->|Yes| F["Send WhatsApp confirmation"]
+    D -->|Yes| G["Log order in Airtable"]
+    D -->|No| H["Alert admin in Slack"]
+```
 
 ## Workflow
 
